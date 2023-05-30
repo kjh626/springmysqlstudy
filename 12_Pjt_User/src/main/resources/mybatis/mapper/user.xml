@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 @Mapper를 지정한다. -->
+<mapper namespace="com.gdu.app12.mapper.UserMapper">
+
+  <select id="selectUserById" parameterType="String" resultType="UserDTO">
+    SELECT ID, EMAIL, JOINED_AT
+      FROM USER_T
+     WHERE ID = #{id}
+  </select>
+  
+  <select id="selectSleepUserById" parameterType="String" resultType="SleepUserDTO">
+    SELECT ID
+      FROM SLEEP_USER_T
+     WHERE ID = #{id}
+  </select>
+
+  <select id="selectLeaveUserById" parameterType="String" resultType="LeaveUserDTO">
+    SELECT ID
+      FROM LEAVE_USER_T
+     WHERE ID = #{id}
+  </select>
+
+  <select id="selectUserByEmail" parameterType="String" resultType="UserDTO">
+    SELECT EMAIL
+      FROM USER_T
+     WHERE EMAIL = #{email}
+  </select>
+  
+  <select id="selectSleepUserByEmail" parameterType="String" resultType="SleepUserDTO">
+    SELECT EMAIL
+      FROM SLEEP_USER_T
+     WHERE EMAIL = #{email}
+  </select>
+
+  <select id="selectLeaveUserByEmail" parameterType="String" resultType="LeaveUserDTO">
+    SELECT EMAIL
+      FROM LEAVE_USER_T
+     WHERE EMAIL = #{email}
+  </select>
+
+  <insert id="insertUser" parameterType="UserDTO">
+    INSERT INTO USER_T (
+        USER_NO
+      , ID
+      , PW
+      , NAME
+      , GENDER
+      , EMAIL
+      , MOBILE
+      , BIRTHYEAR
+      , BIRTHDATE
+      , POSTCODE
+      , ROAD_ADDRESS
+      , JIBUN_ADDRESS
+      , DETAIL_ADDRESS
+      , EXTRA_ADDRESS
+      , AGREE_CODE
+      , JOINED_AT
+      , PW_MODIFIED_AT
+      , AUTOLOGIN_ID
+      , AUTOLOGIN_EXPIRED_AT
+    ) VALUES (
+        USER_SEQ.NEXTVAL
+      , #{id}
+      , #{pw}
+      , #{name}
+      , #{gender}
+      , #{email}
+      , #{mobile}
+      , #{birthyear}
+      , #{birthdate}
+      , #{postcode}
+      , #{roadAddress}
+      , #{jibunAddress}
+      , #{detailAddress}
+      , #{extraAddress}
+      , #{agreecode}
+      , SYSDATE
+      , SYSDATE
+      , NULL
+      , NULL
+    )
+  </insert>
+
+  <select id="selectUserByUserDTO" parameterType="UserDTO" resultType="UserDTO">
+    SELECT ID
+      FROM USER_T
+     WHERE ID = #{id}
+       AND PW = #{pw}
+  </select>
+  <insert id="insertUserAccess" parameterType="String">
+    INSERT INTO USER_ACCESS_T (
+        ID
+      , LAST_LOGIN_AT
+    ) VALUES (
+        #{id}
+      , SYSDATE
+    )
+  </insert>
+  <update id="updateUserAccess" parameterType="String">
+    UPDATE USER_ACCESS_T
+       SET LAST_LOGIN_AT = SYSDATE
+     WHERE ID = #{id}
+  </update>
+  <update id="insertAutologin" parameterType="UserDTO">
+  	UPDATE USER_T
+  	   SET AUTOLOGIN_ID = #{autologinId}
+  	     , AUTOLOGIN_EXPIRED_AT = #{autologinExpiredAt}
+  	 WHERE ID = #{id} 
+  </update>
+  <update id="deleteAutologin" parameterType="String">
+  	UPDATE USER_T
+  	   SET AUTOLOGIN_ID = null
+  	     , AUTOLOGIN_EXPIRED_AT = null
+  	 WHERE ID = #{id} 
+  </update>
+  <select id="selectAutologin" parameterType="String">
+  	SELECT ID
+  	  FROM USER_T
+  	 WHERE AUTOLOGIN_ID = #{autologinId}
+  	   AND AUTOLOGIN_EXPIRED_AT > SYSDATE
+  </select>
+  
+
+  <insert id="insertLeaveUser" parameterType="LeaveUserDTO">
+    INSERT INTO LEAVE_USER_T (
+        ID
+      , EMAIL
+      , JOINED_AT
+      , LEAVED_AT
+    ) VALUES (
+        #{id}
+      , #{email}
+      , #{joinedAt}
+      , SYSDATE
+    )
+  </insert>
+  <delete id="deleteUser" parameterType="String">
+    DELETE
+      FROM USER_T
+     WHERE ID = #{id}
+  </delete>
+
+	<!-- 휴면처리 1단계 : 1년 이상(12개월) 접속 내역(USER_ACCESS_T의 LAST_LOGIN_AT)이 없는 회원을 휴면 테이블에 저장하기 -->
+	<insert id="insertSleepUser">
+		INSERT INTO SLEEP_USER_T (
+		       USER_NO
+		     , ID
+		     , PW
+		     , NAME
+		     , GENDER
+		     , EMAIL
+		     , MOBILE
+		     , BIRTHYEAR
+		     , BIRTHDATE
+		     , POSTCODE
+		     , ROAD_ADDRESS
+		     , JIBUN_ADDRESS
+		     , DETAIL_ADDRESS
+		     , EXTRA_ADDRESS
+		     , AGREE_CODE
+		     , JOINED_AT
+		     , PW_MODIFIED_AT
+		     , SLEPT_AT
+		) (SELECT U.USER_NO
+					  , U.ID
+					  , U.PW
+					  , U.NAME
+					  , U.GENDER
+					  , U.EMAIL
+					  , U.MOBILE
+					  , U.BIRTHYEAR
+					  , U.BIRTHDATE
+					  , U.POSTCODE
+					  , U.ROAD_ADDRESS
+					  , U.JIBUN_ADDRESS
+					  , U.DETAIL_ADDRESS
+					  , U.EXTRA_ADDRESS
+					  , U.AGREE_CODE
+					  , U.JOINED_AT
+					  , U.PW_MODIFIED_AT
+					  , SYSDATE
+					     FROM USER_T U LEFT OUTER JOIN USER_ACCESS_T UA
+					       ON U.ID = UA.ID
+					    WHERE MONTHS_BETWEEN(SYSDATE, UA.LAST_LOGIN_AT) >= 12    <!-- 12개월 이상 로그인 이력이 없는 회원 -->
+					       OR (MONTHS_BETWEEN(SYSDATE, U.JOINED_AT) >= 12 AND UA.LAST_LOGIN_AT IS NULL))    <!-- 가입일이 12개월 이상 지나고, 로그인 이력이 아예 없는 회원 -->
+	</insert>
+	
+	<!-- 휴면처리 2단계 : 1년 이상(12개월) 접속 내역(USER_ACCESS_T의 LAST_LOGIN_AT)이 없는 회원을 회원 테이블에 저장하기 -->
+	<delete id="deleteUserForSleep">
+		DELETE
+		  FROM USER_T
+		 WHERE ID IN(SELECT U.ID
+									 FROM USER_T U LEFT OUTER JOIN USER_ACCESS_T UA
+							       ON U.ID = UA.ID
+							    WHERE MONTHS_BETWEEN(SYSDATE, UA.LAST_LOGIN_AT) >= 12
+							       OR (MONTHS_BETWEEN(SYSDATE, U.JOINED_AT) >= 12 AND UA.LAST_LOGIN_AT IS NULL))
+	</delete>
+
+
+</mapper>

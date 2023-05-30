@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 @Mapper를 지정한다. -->
+<mapper namespace="com.gdu.app13.mapper.BlogMapper">
+	
+	<resultMap type="BlogDTO" id="BlogMap">
+		<id column="BLOG_NO" property="blogNo" />
+		<result column="TITLE" property="title" />
+		<result column="CONTENT" property="content" />
+		<result column="HIT" property="hit" />
+		<result column="CREATED_AT" property="createdAt" />
+		<result column="MODIFIED_AT" property="modifiedAt" />
+		<association javaType="MemberDTO" property="memberDTO">
+			<id column="MEMBER_NO" property="memberNo" />
+			<result column="ID" property="id" />
+			<result column="PW" property="pw" />
+			<result column="NAME" property="name" />
+		</association>
+	</resultMap>
+	
+	
+	
+	
+	<select id="getBlogCount" resultType="int">
+		SELECT COUNT(*)
+		  FROM BLOG_T
+	</select>
+	
+	<!-- BlogDTO를 보면 A.MEMBER_NO, A.ID	를 받을 수가 없다. 그래서 resultMap을 만들어 줘야 한다. -->
+	<select id="getBlogList" parameterType="Map" resultMap="BlogMap">
+	 SELECT A.BLOG_NO, A.TITLE, A.CONTENT, A.HIT, A.CREATED_AT, A.MODIFIED_AT, A.MEMBER_NO, A.ID	
+		 FROM (SELECT ROW_NUMBER() OVER(ORDER BY BLOG_NO DESC) AS RN, B.BLOG_NO, B.TITLE, B.CONTENT, B.HIT, B.CREATED_AT, B.MODIFIED_AT, B.MEMBER_NO, M.ID 
+		        FROM MEMBER_T M INNER JOIN BLOG_T B  
+		          ON M.MEMBER_NO = B.MEMBER_NO) A
+		WHERE A.RN BETWEEN #{begin} AND #{end}
+	</select>
+	
+	<!-- 
+		어떤 BLOG_SEQ 값이 사용되었는지 addBlog() 서비스에 알려줘야 하기 때문에
+		<selectKey>를 사용해서 addBlog() 서비스가 전달한 BlogDTO 객체의 blogNo 필드값에
+		BLOG_SEQ가 발생시킨 값을 저장한다.
+	-->
+	
+	<insert id="addBlog" parameterType="BlogDTO">
+		<selectKey order="BEFORE" keyProperty="blogNo" resultType="int">
+			SELECT BLOG_SEQ.NEXTVAL
+			  FROM DUAL
+		</selectKey>
+		INSERT INTO BLOG_T (
+				BLOG_NO
+			, TITLE
+			, CONTENT
+			, HIT
+			, CREATED_AT
+			, MODIFIED_AT
+			, MEMBER_NO	
+		) VALUES(
+			  #{blogNo}
+			, #{title}
+			, #{content}
+			, 0
+			, SYSDATE
+			, SYSDATE
+			, #{memberDTO.memberNo}
+		)
+	</insert>
+	<insert id="addSummernoteImage" parameterType="SummernoteImageDTO">
+		INSERT INTO SUMMERNOTE_IMAGE_T (
+				FILESYSTEM_NAME
+			, BLOG_NO 
+		)	VALUES (
+				#{filesystemName}
+		  , #{blogNo}
+	  )
+	</insert>
+	
+	<update id="increaseHit" parameterType="int">
+		UPDATE BLOG_T
+		   SET HIT = HIT + 1
+		 WHERE BLOG_NO = #{blogNo} 
+	</update>
+	<select id="getBlogByNo" parameterType="int" resultMap="BlogMap">
+		SELECT B.BLOG_NO, B.TITLE, B.CONTENT, B.HIT, B.CREATED_AT, B.MODIFIED_AT, B.MEMBER_NO, M.ID, M.NAME
+      FROM MEMBER_T M INNER JOIN BLOG_T B  
+        ON M.MEMBER_NO = B.MEMBER_NO
+     WHERE B.BLOG_NO = #{blogNo}
+	</select>
+	
+	
+</mapper>
