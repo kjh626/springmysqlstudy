@@ -13,7 +13,6 @@ public class PageUtil {
 	private int totalRecord;        // 전체 레코드 개수(DB에서 구해온다)
 	private int recordPerPage;      // 한 페이지에 표시할 레코드 개수(파라미터로 받아온다)
 	private int begin;              // 한 페이지에 표시할 레코드의 시작 번호(계산한다)
-	private int end;                // 한 페이지에 표시할 레코드의 종료 번호(계산한다)
 	
 	private int pagePerBlock = 5;   // 한 블록에 표시할 페이지의 개수(임의로 정한다)
 	private int totalPage;          // 전체 페이지 개수(계산한다)           
@@ -28,22 +27,8 @@ public class PageUtil {
 		this.totalRecord = totalRecord;
 		this.recordPerPage = recordPerPage;
 		
-		// begin, end 계산
-		/*
- 			totalRecord==26, recordPerPage==5인 상황
-			page    begin    end
-			1       1        5
-			2       6        10
-			3       11       15
-			4       16       20
-			5       21       25
-			6       26       26
-		*/
-		begin = (page - 1) * recordPerPage + 1;
-		end = begin + recordPerPage - 1;
-		if(end > totalRecord) {   // 30이 26보다 크다. 그래서 조건식으로 오게되고 end는 26이 된다.
-			end = totalRecord;
-		}
+		// begin 계산
+		begin = (page - 1) * recordPerPage;
 		
 		// totalPage 계산
 		totalPage = totalRecord / recordPerPage;

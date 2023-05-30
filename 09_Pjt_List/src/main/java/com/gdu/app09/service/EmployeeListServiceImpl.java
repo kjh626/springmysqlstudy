@@ -15,15 +15,15 @@ import com.gdu.app09.domain.EmpDTO;
 import com.gdu.app09.mapper.EmployeeListMapper;
 import com.gdu.app09.util.PageUtil;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
-@AllArgsConstructor    // field에 @Autowired 처리가 된다.
+@RequiredArgsConstructor    // field에 @Autowired 처리가 된다.
 @Service
 public class EmployeeListServiceImpl implements EmployeeListService {
 	
-	// field 빈이 2개 적혀있으면, 일반적으로 생성자나 메소드로 처리
-	private EmployeeListMapper employeeListMapper;
-	private PageUtil pageUtil;
+	// field
+	private final EmployeeListMapper employeeListMapper;
+	private final PageUtil pageUtil;
 
 	@Override
 	public void getEmployeeListUsingPagination(HttpServletRequest request, Model model) {
@@ -53,14 +53,15 @@ public class EmployeeListServiceImpl implements EmployeeListService {
 		// PageUtil(Pagination에 필요한 모든 정보(9개 필드값)) 계산하기
 		pageUtil.setPageUtil(page, totalRecord, recordPerPage);
 		
-		// DB로 보낼 Map 만들기(PageUtil에서 계산한 begin과 end값 가져다 map에 저장)
+		// DB로 보낼 Map 만들기(PageUtil에서 계산한 begin과 recordPerPage값 가져다 map에 저장)
 		Map<String, Object> map = new HashMap<String, Object>();
-		map.put("begin", pageUtil.getBegin());
-		map.put("end", pageUtil.getEnd());
+		                                             // LIMIT #{begin}, #{recordPerPage}
+		map.put("begin", pageUtil.getBegin());       // begin은 0부터 시작한다. (PageUtil.java 참고)
+		map.put("recordPerPage", recordPerPage);     // end 대신 recordPerPage를 전달한다. 
 		map.put("order", order);
 		map.put("column", column);
 		
-		// begin ~ end 사이의 목록 가져오기
+		// begin부터 recordPerPage개의 목록 가져오기
 		List<EmpDTO> employees = employeeListMapper.getEmployeeListUsingPagination(map); 
 		
 		// pagination.jsp로 전달할(forward)할 정보를 저장하기
@@ -103,10 +104,11 @@ public class EmployeeListServiceImpl implements EmployeeListService {
 		
 		// DB로 보낼 Map 만들기
 		Map<String, Object> map = new HashMap<String, Object>();
-		map.put("begin", pageUtil.getBegin());
-		map.put("end", pageUtil.getEnd());
+                                                     // LIMIT #{begin}, #{recordPerPage}
+        map.put("begin", pageUtil.getBegin());       // begin은 0부터 시작한다. (PageUtil.java 참고)
+        map.put("recordPerPage", recordPerPage);     // end 대신 recordPerPage를 전달한다. 
 		
-		// begin ~ end 사이의 목록 가져오기
+		// begin부터 recordPerPage개의 목록 가져오기
 		List<EmpDTO> employees = employeeListMapper.getEmployeeListUsingScroll(map); 
 		
 		// scroll.jsp 로 응답할 데이터
@@ -182,11 +184,12 @@ public class EmployeeListServiceImpl implements EmployeeListService {
 		// PageUtil(Pagination에 필요한 모든 정보(9개 필드값)) 계산하기
 		pageUtil.setPageUtil(page, totalRecord, recordPerPage);
 
-		// DB로 보낼 Map에 begin,end 추가하기
-		map.put("begin", pageUtil.getBegin());
-		map.put("end", pageUtil.getEnd());
+		// DB로 보낼 Map에 begin,recordPerPage 추가하기
+		                                             // LIMIT #{begin}, #{recordPerPage}
+		map.put("begin", pageUtil.getBegin());       // begin은 0부터 시작한다. (PageUtil.java 참고)
+		map.put("recordPerPage", recordPerPage);     // end 대신 recordPerPage를 전달한다. 
 
-		// begin ~ end 사이의 목록 가져오기
+		// begin부터 recordPerPage개의 목록 가져오기
 		List<EmpDTO> employees = employeeListMapper.getEmployeeListUsingSearch(map); 
 		
 		// search.jsp로 전달할(forward)할 정보를 저장하기
