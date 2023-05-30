@@ -11,20 +11,48 @@
 		  FROM BBS
 	</select>
 	
-	<select id="getBbsList" parameterType="Map" resultType="BbsDTO">
-		SELECT A.RN, A.BBS_NO, A.WRITER, A.TITLE, A.IP, A.CREATED_AT, A.STATE, A.DEPTH, A.GROUP_NO, A.GROUP_ORDER
-		  FROM (SELECT ROW_NUMBER() OVER(ORDER BY GROUP_NO DESC, GROUP_ORDER ASC) AS RN, BBS_NO, WRITER, TITLE, IP, CREATED_AT, STATE, DEPTH, GROUP_NO, GROUP_ORDER
-		  		  FROM BBS) A
-		 WHERE A.RN BETWEEN #{begin} AND #{end}
-	</select>
+  <select id="getBbsList" parameterType="Map" resultType="BbsDTO">
+    SELECT A.BBS_NO, A.WRITER, A.TITLE, A.IP, A.CREATED_AT, A.STATE, A.DEPTH, A.GROUP_NO, A.GROUP_ORDER
+      FROM (SELECT BBS_NO, WRITER, TITLE, IP, CREATED_AT, STATE, DEPTH, GROUP_NO, GROUP_ORDER
+              FROM BBS) A
+     ORDER BY GROUP_NO DESC, GROUP_ORDER ASC
+     LIMIT #{begin}, #{recordPerPage}
+  </select>
 
-	<!-- 원글 달기 -->
-	<insert id="addBbs" parameterType="BbsDTO">
-		INSERT INTO BBS
-			(BBS_NO, WRITER, TITLE, IP, CREATED_AT, STATE, DEPTH, GROUP_NO, GROUP_ORDER)
-		VALUES
-			(BBS_SEQ.NEXTVAL, #{writer}, #{title}, #{ip}, SYSDATE, 1, 0, BBS_SEQ.CURRVAL, 0)
-	</insert>
+	<!-- 원글 달기 - 1 -->
+	<!--
+		<insert id="addBbs" useGeneratedKeys="true" keyProperty="bbsNo" parameterType="BbsDTO">
+		자동 증가(AUTO_INCREMENT)한 BBS_NO값을 파라미터로 전달한 BbsDTO 객체의 bbsNo 필드에 저장한다. 
+	-->
+	<!-- 인설트가 끝나면(쿼리문이 돌고나면) writer, title, ip, + bbsNo도 채워진다. 그런데 현재 자동증가된 번호를 알 수가 없다. 그래서 자동증가한 값을 어딘가에 저장해둬야 한다.
+	     자동증가한 값이 얼마였는 지 기억시키는 장소가 바로 BbsDTO의 bbsNo 필드  ==> <selectKey>로 했던 것과 유사하다.
+	     => 이 bbsNo값을 GROUP_NO로 넘겨줘야 하기 때문에 하는 작업
+	-->
+  <insert id="addBbs" useGeneratedKeys="true" keyProperty="bbsNo" parameterType="BbsDTO">
+    INSERT INTO BBS(
+        WRITER
+      , TITLE
+      , IP
+      , CREATED_AT
+      , STATE
+      , DEPTH
+      , GROUP_ORDER
+    ) VALUES (
+        #{writer}
+      , #{title}
+      , #{ip}
+      , NOW()
+      , 1
+      , 0
+      , 0
+    )
+  </insert>
+  <!-- 원글 달기 - 2 -->
+  <update id="addBbsGroupNo" parameterType="BbsDTO">
+    UPDATE BBS
+       SET GROUP_NO = #{bbsNo}
+     WHERE BBS_NO = #{bbsNo}
+  </update>
 	
 	<!-- 삭제 -->
 	<update id="removeBbs" parameterType="int">
@@ -35,20 +63,35 @@
 
 
 	<!-- 기존 답글에 선행 작업(같은 GROUP_NO를 가진 게시글 중, 원글의 GROUP_ORDER보다 큰 GROUP_ORDER를 가진 게시글의 GROUP_ORDER를 1씩 증가시킨다.) -->
-	<update id="increaseGroupOrder" parameterType="BbsDTO">  <!-- parameterType="BbsDTO"는 원글을 의미한다. -->
-		UPDATE BBS
-		   SET GROUP_ORDER = GROUP_ORDER + 1
-		 WHERE GROUP_NO = #{groupNo}         <!-- #{groupNo}는 원글의 groupNo를 의미한다. -->
-		   AND GROUP_ORDER > #{groupOrder}   <!-- #{groupOrder}는 원글의 groupOrder를 의미한다. -->
-	</update>
+  <update id="increaseGroupOrder" parameterType="BbsDTO">  <!-- parameterType="BbsDTO"는 원글을 의미한다. -->
+    UPDATE BBS
+       SET GROUP_ORDER = GROUP_ORDER + 1
+     WHERE GROUP_NO = #{groupNo}         <!-- #{groupNo}는 원글의 groupNo를 의미한다. -->
+       AND GROUP_ORDER > #{groupOrder}   <!-- #{groupOrder}는 원글의 groupOrder를 의미한다. -->
+  </update>
 
-	<!-- 답글 달기 -->
-	<insert id="addReply" parameterType="BbsDTO">  <!-- parameterType="BbsDTO"는 답글을 의미한다. -->
-		INSERT INTO BBS
-			(BBS_NO, WRITER, TITLE, IP, CREATED_AT, STATE, DEPTH, GROUP_NO, GROUP_ORDER)
-		VALUES
-			(BBS_SEQ.NEXTVAL, #{writer}, #{title}, #{ip}, SYSDATE, 1, #{depth}, #{groupNo}, #{groupOrder})
-	</insert>
+  <!-- 답글 달기 -->
+  <insert id="addReply" parameterType="BbsDTO">  <!-- parameterType="BbsDTO"는 답글을 의미한다. -->
+    INSERT INTO BBS(
+        WRITER
+      , TITLE
+      , IP
+      , CREATED_AT
+      , STATE
+      , DEPTH
+      , GROUP_NO
+      , GROUP_ORDER
+    ) VALUES (
+        #{writer}
+      , #{title}
+      , #{ip}
+      , NOW()
+      , 1
+      , #{depth}
+      , #{groupNo}
+      , #{groupOrder}
+    )
+  </insert>
 	
 
 

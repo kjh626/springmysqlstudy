@@ -25,7 +25,7 @@ public class RemoveWrongfileScheduler {
 	private MyFileUtil myFileUtil;
 	private UploadMapper uploadMapper;
 	
-	@Scheduled(cron="0 54 17 1/1 * ?")  // www.cronmaker.com에서 생성한 매일 새벽 3시 정보에서 마지막 필드 *를 지워줌
+	@Scheduled(cron="0 49 16 1/1 * ?")  // www.cronmaker.com에서 생성한 매일 새벽 3시 정보에서 마지막 필드 *를 지워줌
 	public void execute() {
 		
 		// 어제 업로드 된 첨부 파일들의 정보(DB에서 가져오기)

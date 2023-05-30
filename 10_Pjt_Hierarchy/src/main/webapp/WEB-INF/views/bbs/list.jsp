@@ -16,7 +16,7 @@
 		
 		// 원글 달기 결과 메시지
 		if('${addResult}' != ''){
-			if('${addResult}' == '1') {
+			if('${addResult}' == '2') {
 				alert('원글이 달렸습니다.');
 			} else {
 				alert('원글 달기가 실패했습니다.');

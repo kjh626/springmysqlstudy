@@ -15,98 +15,104 @@
 		계산으로 가지고 오는 정보라고 볼 수 있음. -> 서브쿼리를 활용해서 계산.
 		UploadDTO가 칼럼 6개를 다 못 싣는다. ATTACH_COUNT는 여기서 추가된 것이라 DTO에 저장 못 한다. 이걸 저장할 수 있게끔 UploadDTO를 작업해줘야 한다. => 이로써 알게된 점: DTO가 꼭 테이블의 칼럼과 똑같을 필요는 없다
 		*실구현할 때는 목록보기 쿼리문에 페이지네이션을 처리해줘야 한다.* -->
-	<select id="getUploadList" parameterType="Map" resultType="UploadDTO">
-		SELECT B.RN
-		     , B.UPLOAD_NO
-		     , B.UPLOAD_TITLE
-		     , B.UPLOAD_CONTENT
-		     , B.CREATED_AT
-		     , B.MODIFIED_AT
-		     , B.ATTACH_COUNT
-		  FROM (SELECT ROW_NUMBER() OVER(ORDER BY UPLOAD_NO DESC) AS RN
-		             , U.UPLOAD_NO
-		             , U.UPLOAD_TITLE
-		             , U.UPLOAD_CONTENT
-		             , U.CREATED_AT
-		             , U.MODIFIED_AT
-		             , (SELECT COUNT(*)
-		                  FROM ATTACH A
-		                 WHERE U.UPLOAD_NO = A.UPLOAD_NO) AS ATTACH_COUNT
-		          FROM UPLOAD U) B
-		 WHERE B.RN BETWEEN #{begin} AND #{end}
-	</select>
+  <select id="getUploadList" parameterType="Map" resultType="UploadDTO">
+    SELECT B.UPLOAD_NO
+         , B.UPLOAD_TITLE
+         , B.UPLOAD_CONTENT
+         , B.CREATED_AT
+         , B.MODIFIED_AT
+         , B.ATTACH_COUNT
+      FROM (SELECT U.UPLOAD_NO
+                 , U.UPLOAD_TITLE
+                 , U.UPLOAD_CONTENT
+                 , U.CREATED_AT
+                 , U.MODIFIED_AT
+                 , (SELECT COUNT(*)
+                      FROM ATTACH A
+                     WHERE U.UPLOAD_NO = A.UPLOAD_NO) AS ATTACH_COUNT
+              FROM UPLOAD U) B
+     ORDER BY UPLOAD_NO DESC
+     LIMIT #{begin}, #{recordPerPage}
+  </select>
 	
-	<insert id="addUpload" parameterType="UploadDTO">
-		<!-- INSERT 수행 이전(before)에 addUpload 서비스가 전달한 UploadDTO의 uploadNo필드에 UPLOAD_SEQ.NEXTVAL값을 저장한다. -->
-		<selectKey order="BEFORE" resultType="int" keyProperty="uploadNo">
-			SELECT UPLOAD_SEQ.NEXTVAL
-			  FROM DUAL
-		</selectKey>
-		INSERT INTO UPLOAD
-			(UPLOAD_NO, UPLOAD_TITLE, UPLOAD_CONTENT, CREATED_AT, MODIFIED_AT)
-		VALUES
-			(#{uploadNo}, #{uploadTitle}, #{uploadContent}, SYSTIMESTAMP, SYSTIMESTAMP)
-	</insert>
+  <insert id="addUpload" useGeneratedKeys="true" keyProperty="uploadNo" parameterType="UploadDTO">
+    INSERT INTO UPLOAD (
+        UPLOAD_TITLE
+      , UPLOAD_CONTENT
+      , CREATED_AT
+      , MODIFIED_AT
+    ) VALUES (
+        #{uploadTitle}
+      , #{uploadContent}
+      , CURRENT_TIMESTAMP()
+      , CURRENT_TIMESTAMP()
+    )
+  </insert>
 	
-	<insert id="addAttach" parameterType="AttachDTO">
-		INSERT INTO ATTACH
-			(ATTACH_NO, PATH, ORIGIN_NAME, FILESYSTEM_NAME, DOWNLOAD_COUNT, HAS_THUMBNAIL, UPLOAD_NO)
-		VALUES
-			(ATTACH_SEQ.NEXTVAL, #{path}, #{originName}, #{filesystemName}, 0, #{hasThumbnail}, #{uploadNo})
-	</insert>
-	
-	<!-- UPLOAD의 정보만 반환해서는 제대로된 상세보기를 할 수 없다. 상세보기에서는 업로드의 정보와 첨부의 정보를 모두 확인할 수 있어야 한다.
-		①ajax으로 처리하는 방법, ②MVC패턴으로 처리하는 방법이 있다. 우리는 오늘 MVC로 한다.
-		select 쿼리문 2개 쓴다.
-		모든 첨부목록이 필요한 게 아니기 때문에 attach select쿼리문에서도 똑같이 uploadNo를 받아온다-->
-	<select id="getUploadByNo" parameterType="int" resultType="UploadDTO">
-		SELECT UPLOAD_NO, UPLOAD_TITLE, UPLOAD_CONTENT, CREATED_AT, MODIFIED_AT
-		  FROM UPLOAD
-		 WHERE UPLOAD_NO = #{uploadNo}
-	</select>
-	<select id="getAttachList" parameterType="int"  resultType="AttachDTO">
-		SELECT ATTACH_NO, PATH, ORIGIN_NAME, FILESYSTEM_NAME, DOWNLOAD_COUNT, HAS_THUMBNAIL, UPLOAD_NO
-		  FROM ATTACH
-		 WHERE UPLOAD_NO = #{uploadNo}
-	</select>
-	
-	<!-- 썸네일을 가지고 있을 때: attachNo값을 가진 select가 하나 필요해짐(개별 첨부정보가 필요한 거다)-->
-	<select id="getAttachByNo" parameterType="int"  resultType="AttachDTO">
-		SELECT ATTACH_NO, PATH, ORIGIN_NAME, FILESYSTEM_NAME, DOWNLOAD_COUNT, HAS_THUMBNAIL, UPLOAD_NO
-		  FROM ATTACH
-		 WHERE ATTACH_NO = #{attachNo}
-	</select>
-	
-	<update id="increaseDownloadCount" parameterType="int">
-		UPDATE ATTACH
-		   SET DOWNLOAD_COUNT = DOWNLOAD_COUNT + 1
-		 WHERE ATTACH_NO = #{attachNo}
-	</update>
-	
-	<delete id="removeUpload" parameterType="int">
-		DELETE
-		  FROM UPLOAD
-		 WHERE UPLOAD_NO = #{uploadNo}
-	</delete>
-	
-	<update id="modifyUpload" parameterType="UploadDTO">
-		UPDATE UPLOAD
-		   SET UPLOAD_TITLE = #{uploadTitle}
-		     , UPLOAD_CONTENT = #{uploadContent}
-		     , MODIFIED_AT = SYSTIMESTAMP
-		 WHERE UPLOAD_NO = #{uploadNo}
-	</update>
-	
-	<delete id="removeAttach" parameterType="int">
-		DELETE
-		  FROM ATTACH
-		 WHERE ATTACH_NO = #{attachNo}
-	</delete>
-	
-	<select id="getAttachListInYesterday" resultType="AttachDTO">
-		SELECT ATTACH_NO, PATH, ORIGIN_NAME, FILESYSTEM_NAME, DOWNLOAD_COUNT, HAS_THUMBNAIL, UPLOAD_NO
-		  FROM ATTACH
-		 WHERE PATH LIKE CONCAT('%', TO_CHAR(SYSDATE - 1), 'YYYY\\MM\\DD'))
-	</select>
+  <insert id="addAttach" parameterType="AttachDTO">
+    INSERT INTO ATTACH (
+        PATH
+      , ORIGIN_NAME
+      , FILESYSTEM_NAME
+      , DOWNLOAD_COUNT
+      , HAS_THUMBNAIL
+      , UPLOAD_NO
+    ) VALUES (
+        #{path}
+      , #{originName}
+      , #{filesystemName}
+      , 0
+      , #{hasThumbnail}
+      , #{uploadNo}
+    )
+  </insert>  <select id="getUploadByNo" parameterType="int" resultType="UploadDTO">
+    SELECT UPLOAD_NO, UPLOAD_TITLE, UPLOAD_CONTENT, CREATED_AT, MODIFIED_AT
+      FROM UPLOAD
+     WHERE UPLOAD_NO = #{uploadNo}
+  </select>
+
+  <select id="getAttachList" parameterType="int" resultType="AttachDTO">
+    SELECT ATTACH_NO, PATH, ORIGIN_NAME, FILESYSTEM_NAME, DOWNLOAD_COUNT, HAS_THUMBNAIL, UPLOAD_NO
+      FROM ATTACH
+     WHERE UPLOAD_NO = #{uploadNo}
+  </select>
+
+  <select id="getAttachByNo" parameterType="int" resultType="AttachDTO">
+    SELECT ATTACH_NO, PATH, ORIGIN_NAME, FILESYSTEM_NAME, DOWNLOAD_COUNT, HAS_THUMBNAIL, UPLOAD_NO
+      FROM ATTACH
+     WHERE ATTACH_NO = #{attachNo}
+  </select>
+
+  <update id="increaseDownloadCount" parameterType="int">
+    UPDATE ATTACH
+       SET DOWNLOAD_COUNT = DOWNLOAD_COUNT + 1
+     WHERE ATTACH_NO = #{attachNo}
+  </update>
+
+  <delete id="removeUpload" parameterType="int">
+    DELETE
+      FROM UPLOAD
+     WHERE UPLOAD_NO = #{uploadNo}
+  </delete>
+
+  <update id="modifyUpload" parameterType="UploadDTO">
+    UPDATE UPLOAD
+       SET UPLOAD_TITLE = #{uploadTitle}
+         , UPLOAD_CONTENT = #{uploadContent}
+         , MODIFIED_AT = CURRENT_TIMESTAMP()
+     WHERE UPLOAD_NO = #{uploadNo}
+  </update>
+
+  <delete id="removeAttach" parameterType="int">
+    DELETE
+      FROM ATTACH
+     WHERE ATTACH_NO = #{attachNo}
+  </delete>
+
+  <select id="getAttachListInYesterday" resultType="AttachDTO">
+    SELECT ATTACH_NO, PATH, ORIGIN_NAME, FILESYSTEM_NAME, DOWNLOAD_COUNT, HAS_THUMBNAIL, UPLOAD_NO
+      FROM ATTACH
+     WHERE PATH LIKE CONCAT('%', DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 DAY), '%Y\\%m\\%d')
+  </select>
 
 </mapper>
