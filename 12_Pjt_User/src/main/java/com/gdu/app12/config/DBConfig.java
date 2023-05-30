@@ -17,14 +17,16 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
 @MapperScan(basePackages = {"com.gdu.app12.mapper"})         // @Mapper가 존재하는 패키지를 작성한다. 
 @PropertySource(value={"classpath:application.properties"})  // applcation.properties 파일의 속성을 읽어 오자!   -> Environment 랑 세트라고 생각.
 @EnableTransactionManagement(proxyTargetClass=true)          // 트랜잭션 처리를 허용한다. (DBConfig에서 앞으로도 계속 사용할 애너테이션)
 @Configuration
 public class DBConfig {
 
-	@Autowired
-	private Environment env; 
+	private final Environment env; 
 	
 	// HikariConfig Bean - 환경 설정을 먼저 만들어줘야 한다. application.properties에 적혀있는 것을 읽는다(가져온다). (properties 파일로 나눠준 이유는 gitignore로 설정해서 올리지 않으려고)
 	@Bean

@@ -13,11 +13,13 @@ import org.springframework.web.util.WebUtils;
 import com.gdu.app12.domain.UserDTO;
 import com.gdu.app12.mapper.UserMapper;
 
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
 @Component
 public class AutologinInterceptor implements HandlerInterceptor{
   
-  @Autowired
-  private UserMapper userMapper;
+  private final UserMapper userMapper;
   
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {

@@ -19,16 +19,16 @@ import com.gdu.app12.mapper.UserMapper;
 import com.gdu.app12.util.JavaMailUtil;
 import com.gdu.app12.util.SecurityUtil;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
-@AllArgsConstructor  // field에 @Autowired 처리를 위해서
+@RequiredArgsConstructor  // field에 @Autowired 처리를 위해서
 @Service
 public class UserServiceImpl implements UserService {
 
   // field
-  private UserMapper userMapper;
-  private JavaMailUtil javaMailUtil;
-  private SecurityUtil securityUtil;
+  private final UserMapper userMapper;
+  private final JavaMailUtil javaMailUtil;
+  private final SecurityUtil securityUtil;
   
   @Override
   public Map<String, Object> verifyId(String id) {
@@ -305,7 +305,7 @@ public class UserServiceImpl implements UserService {
     session.invalidate();
   }
   
-  @Transactional(readOnly=true)
+  @Transactional
   @Override
   public void leave(HttpServletRequest request, HttpServletResponse response) {
     
@@ -354,7 +354,7 @@ public class UserServiceImpl implements UserService {
     
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   @Override
   public void sleepUserHandle() {
     int insertResult = userMapper.insertSleepUser();
